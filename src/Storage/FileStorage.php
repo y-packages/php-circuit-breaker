@@ -12,7 +12,7 @@ class FileStorage implements StorageInterface
 {
     private string $directory;
 
-    public function __construct(string $directory = null)
+    public function __construct(?string $directory = null)
     {
         $this->directory = $directory ?? sys_get_temp_dir() . '/yaknet-circuit-breaker';
         
