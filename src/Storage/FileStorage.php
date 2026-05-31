@@ -28,6 +28,9 @@ class FileStorage implements StorageInterface
         return $this->directory . DIRECTORY_SEPARATOR . md5($serviceName) . '.json';
     }
 
+    /**
+     * @return array{state?: string, failures?: int, last_change?: int}
+     */
     private function loadData(string $serviceName): array
     {
         $path = $this->getFilePath($serviceName);
@@ -43,6 +46,9 @@ class FileStorage implements StorageInterface
         return json_decode($content, true) ?: [];
     }
 
+    /**
+     * @param array{state?: string, failures?: int, last_change?: int} $data
+     */
     private function saveData(string $serviceName, array $data): void
     {
         file_put_contents($this->getFilePath($serviceName), json_encode($data));
