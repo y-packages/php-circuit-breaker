@@ -43,7 +43,11 @@ class FileStorage implements StorageInterface
         }
 
         $content = file_get_contents($path);
-        return json_decode($content, true) ?: [];
+        if ($content === false) {
+            return [];
+        }
+        $data = json_decode($content, true);
+        return is_array($data) ? $data : [];
     }
 
     /**
