@@ -70,4 +70,36 @@ class CircuitBreakerTest extends TestCase
         $this->expectException(CircuitOpenException::class);
         $breaker->run(fn() => 'Should not run');
     }
+
+    public function testFallbackWhenCircuitOpen(): void
+    {
+        $settings = new Settings(failureThreshold: 1);
+        $breaker = new CircuitBreaker('test-service', $this->storage, $settings);
+
+        // Open the circuit
+        try {
+            $breaker->run(fn() => throw new \Exception('Fail'));
+        } catch (\Exception) {}
+
+        // Execute with fallback
+        $result = $breaker->run(
+            fn() => 'Primary',
+            fn(\Throwable $e) => 'Fallback because: ' . get_class($e)
+        );
+
+        $this->assertEquals('Fallback because: YakNet\CircuitBreaker\Exception\CircuitOpenException', $result);
+    }
+
+    public function testFallbackWhenExecutionFails(): void
+    {
+        $settings = new Settings(failureThreshold: 5);
+        $breaker = new CircuitBreaker('test-service', $this->storage, $settings);
+
+        $result = $breaker->run(
+            fn() => throw new \RuntimeException('Execution failed'),
+            fn(\Throwable $e) => 'Fallback because: ' . $e->getMessage()
+        );
+
+        $this->assertEquals('Fallback because: Execution failed', $result);
+    }
 }

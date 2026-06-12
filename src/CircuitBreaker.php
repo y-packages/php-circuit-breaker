@@ -19,29 +19,39 @@ class CircuitBreaker
 
     /**
      * Executes the given callable if the circuit is not open.
+     * If a fallback is provided, it will be executed when the circuit is open
+     * or when the callback execution fails.
      * 
      * @template T
      * @param callable(): T $callback
+     * @param (callable(\Throwable): T)|null $fallback
      * @return T
      * @throws CircuitOpenException
      * @throws \Throwable
      */
-    public function run(callable $callback): mixed
+    public function run(callable $callback, ?callable $fallback = null): mixed
     {
-        $state = $this->getEffectiveState();
-
-        if ($state === CircuitState::OPEN) {
-            $lastChange = $this->storage->getLastStateChange($this->serviceName);
-            $remaining = $this->settings->retryTimeout - (time() - $lastChange);
-            throw new CircuitOpenException($this->serviceName, max(0, $remaining));
-        }
-
         try {
-            $result = $callback();
-            $this->onSuccess();
-            return $result;
+            $state = $this->getEffectiveState();
+
+            if ($state === CircuitState::OPEN) {
+                $lastChange = $this->storage->getLastStateChange($this->serviceName);
+                $remaining = $this->settings->retryTimeout - (time() - $lastChange);
+                throw new CircuitOpenException($this->serviceName, max(0, $remaining));
+            }
+
+            try {
+                $result = $callback();
+                $this->onSuccess();
+                return $result;
+            } catch (\Throwable $e) {
+                $this->onFailure();
+                throw $e;
+            }
         } catch (\Throwable $e) {
-            $this->onFailure();
+            if ($fallback !== null) {
+                return $fallback($e);
+            }
             throw $e;
         }
     }
